@@ -37,6 +37,14 @@ For each meeting, the workflow stores:
 - Task owners
 - Deadlines
 
+## Workflow
+
+![Workflow Architecture](workflowarchitecture.png)
+
+## Final Output
+
+![Google Sheets Output](google-sheets-output.png)
+
 ## Tech Stack
 
 - n8n
