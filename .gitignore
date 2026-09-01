@@ -1,0 +1,9 @@
+.env
+*.env
+credentials.json
+secrets.json
+*.wav
+*.mp3
+*.m4a
+node_modules/
+.n8n/
