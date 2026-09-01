@@ -1,0 +1,323 @@
+{
+  "name": "AI Meeting Notes & Action Item Extractor",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -624,
+        -272
+      ],
+      "id": "18d5c6f9-c3eb-4f0b-99ae-f8e2742b7ace",
+      "name": "Meeting Recording Input"
+    },
+    {
+      "parameters": {
+        "fileSelector": "=C:\\path\\to\\meeting-demo.wav",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -464,
+        -240
+      ],
+      "id": "d274af59-cef4-4fa6-913c-263d7ed46ff9",
+      "name": "Read Meeting File"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f99d4a31-bd75-48f7-b449-925ef87d203e",
+              "name": "transcript",
+              "value": "=PASTE_OR_GENERATE_MEETING_TRANSCRIPT_HERE",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -288,
+        -208
+      ],
+      "id": "36b78560-1636-4694-90a1-c5d4bcf702b0",
+      "name": "Prepare Transcript"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "models/gemini-3-flash-preview"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are an AI meeting notes assistant.\n\nAnalyze the meeting transcript below.\n\nWrite ONLY a concise meeting summary in 1–2 short paragraphs.\n\nDo NOT include:\n- KEY DECISIONS\n- ACTION ITEMS\n- RISKS / BLOCKERS\n- headings\n- labels\n- explanations\n\nUse only information explicitly supported by the transcript.\n\nMEETING TRANSCRIPT:\n\n{{ $json.transcript }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        -144,
+        -160
+      ],
+      "id": "b6f15421-410f-4dcb-8c20-f8594d4a26e6",
+      "name": "Generate Meeting Summary"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bdb92e02-e9d6-4b72-88b5-d6a15e2a6aab",
+              "name": "=meeting_notes",
+              "value": "={{ $json.content.parts[0].text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        160,
+        -112
+      ],
+      "id": "a76f177c-10b7-49e0-9a7d-e107631e342b",
+      "name": "Prepare AI Output"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "models/gemini-3-flash-preview"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are an AI meeting action-item extractor.\n\nAnalyze the ORIGINAL MEETING TRANSCRIPT below.\n\nReturn ONLY these two sections:\n\nKEY DECISIONS\n- List each important decision explicitly made during the meeting.\n- If there are no key decisions, write:\nNone specified.\n\nACTION ITEMS\nFor EVERY action item mentioned in the transcript, preserve the exact task, owner, and deadline.\n\nUse this format:\n\n- Task: [task]\n- Owner: [person/team]\n- Deadline: [deadline]\n\nRules:\n1. Do not invent information.\n2. Do not combine separate action items.\n3. Do not assign an owner unless the transcript explicitly identifies one.\n4. If the owner is not mentioned, write \"Not specified\".\n5. If the deadline is not mentioned, write \"Not specified\".\n6. Keep each action item separate.\n7. Use only information explicitly supported by the transcript.\n8. Return ONLY KEY DECISIONS and ACTION ITEMS. Do not add explanations.\n\nORIGINAL MEETING TRANSCRIPT:\n{{ $('Prepare Transcript').item.json.transcript }}\n"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        368,
+        -64
+      ],
+      "id": "5cb72418-8107-4fbd-a0a0-bd92eba3d7d7",
+      "name": "Extract Decisions & Actions"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "23aa7d9f-b0a1-4e87-8e05-50f4fed36930",
+              "name": "=key_decisions",
+              "value": "={{ $('Extract Decisions & Actions').item.json.content.parts[0].text\n.split('ACTION ITEMS')[0]\n.replace('KEY DECISIONS', '')\n.replaceAll('\\\\n', '\\n')\n.trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "910dbe8c-c199-41c1-a988-8015e5e324a6",
+              "name": "=action_items",
+              "value": "={{ $('Extract Decisions & Actions').item.json.content.parts[0].text\n.split('ACTION ITEMS')[1]\n.replaceAll('\\\\n', '\\n')\n.trim() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        448,
+        160
+      ],
+      "id": "5f7a43de-f60f-4005-a822-ca76c06ecfe1",
+      "name": "Structure Results"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Meeting Date": "={{ $now }}",
+            "Meeting Notes": "={{ $('Prepare Transcript').item.json.transcript }}",
+            "Key Decisions": "={{ $('Structure Results').item.json.key_decisions }}",
+            "Action Items": "={{ $('Structure Results').item.json.action_items }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Meeting Date",
+              "displayName": "Meeting Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Meeting Notes",
+              "displayName": "Meeting Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Key Decisions",
+              "displayName": "Key Decisions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Action Items",
+              "displayName": "Action Items",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        672,
+        160
+      ],
+      "id": "aeda542d-5849-45de-b330-15a25e2e57df",
+      "name": "Save to Google Sheets"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Meeting Recording Input": {
+      "main": [
+        [
+          {
+            "node": "Read Meeting File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Meeting File": {
+      "main": [
+        [
+          {
+            "node": "Prepare Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Transcript": {
+      "main": [
+        [
+          {
+            "node": "Generate Meeting Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Meeting Summary": {
+      "main": [
+        [
+          {
+            "node": "Prepare AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare AI Output": {
+      "main": [
+        [
+          {
+            "node": "Extract Decisions & Actions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Decisions & Actions": {
+      "main": [
+        [
+          {
+            "node": "Structure Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structure Results": {
+      "main": [
+        [
+          {
+            "node": "Save to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "f51f9d97-7114-4c49-9937-d4bc1e27efc3",
+  "nodeGroups": [],
+  "id": "zCcjtKVdepFMp1az",
+  "tags": []
+}
