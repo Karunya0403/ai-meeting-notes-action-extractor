@@ -39,7 +39,7 @@ For each meeting, the workflow stores:
 
 ## Workflow
 
-![Workflow Architecture](workflowarchitecture.png)
+![Workflow Architecture](workflow%20architecture.png)
 
 ## Final Output
 
